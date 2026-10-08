@@ -23,6 +23,19 @@ class Item:
 def clean(s): return re.sub(r'\s+',' ',s or '').strip()
 def canon(u):
     p=urlparse(u); return f'{p.scheme}://{p.netloc}{p.path.rstrip("/") or "/"}'
+
+def localize_runtime_url(u):
+    """Força o catálogo brasileiro da Runtime."""
+    u=canon(u)
+    p=urlparse(u)
+    path=p.path
+    if path.startswith('/pt-br/'):
+        return u
+    if path.startswith('/feature/'):
+        return f'{p.scheme}://{p.netloc}/pt-br{path}'
+    if path.startswith('/collections/'):
+        return f'{p.scheme}://{p.netloc}/pt-br{path}'
+    return u
 def same_host(u): return urlparse(u).netloc.lower() in {'runtime.tv','www.runtime.tv'}
 def is_feature(u): return same_host(u) and bool(FEATURE_RE.match(urlparse(u).path))
 def is_collection(u): return same_host(u) and bool(COLLECTION_RE.match(urlparse(u).path))
@@ -31,7 +44,7 @@ def all_links(html, base):
     soup=BeautifulSoup(html,'lxml'); out=set()
     for a in soup.find_all('a',href=True):
         try:
-            u=canon(urljoin(base,a['href']))
+            u=localize_runtime_url(urljoin(base,a['href']))
             if same_host(u): out.add(u)
         except: pass
     return out
@@ -74,7 +87,7 @@ async def accept_cookies(page):
 
 async def extract_page_links(page):
     try:
-        return {canon(x) for x in await page.locator('a[href]').evaluate_all('els=>els.map(e=>e.href).filter(Boolean)') if same_host(x)}
+        return {localize_runtime_url(x) for x in await page.locator('a[href]').evaluate_all('els=>els.map(e=>e.href).filter(Boolean)') if same_host(x)}
     except: return set()
 
 async def expand_page(page, rounds=12):
@@ -118,6 +131,66 @@ async def discover_category(page,cat):
     logging.info('Categoria %s -> %d filmes/páginas VOD',cat,len(feats))
     return feats
 
+async def select_portuguese_audio(page):
+    # A Runtime BR page can still expose an English default track. Try the
+    # visible language/audio controls before accepting the stream.
+    selectors = [
+        'button:has-text("Português")', 'button:has-text("Portuguese")',
+        '[role=button]:has-text("Português")', '[role=button]:has-text("Portuguese")',
+        'text=Português (Brasil)', 'text=Português', 'text=Portuguese',
+        '[aria-label*="Português" i]', '[aria-label*="Portuguese" i]',
+        '[title*="Português" i]', '[title*="Portuguese" i]',
+        '[data-language*="pt" i]', '[data-lang="pt-BR"]', '[data-lang="pt"]'
+    ]
+    for sel in selectors:
+        try:
+            loc=page.locator(sel)
+            n=min(await loc.count(),4)
+            for i in range(n):
+                try:
+                    if await loc.nth(i).is_visible(timeout=400):
+                        await loc.nth(i).click(force=True,timeout=900)
+                        await page.wait_for_timeout(800)
+                except: pass
+        except: pass
+
+
+def manifest_has_portuguese(url, session=None):
+    """Require an explicit Portuguese audio indication in the HLS master."""
+    if not url: return False
+    low=url.lower()
+    # The Runtime often embeds defaultAudioLang inside a base64 JSON payload.
+    try:
+        from urllib.parse import parse_qs
+        import base64
+        payload=(parse_qs(urlparse(url).query).get('payload') or [''])[0]
+        if payload:
+            raw=base64.b64decode(payload + '='*((4-len(payload)%4)%4)).decode('utf-8','ignore').lower()
+            if re.search(r'"defaultaudiolang"\s*:\s*"(?:pt|pt-br|por)"', raw, re.I):
+                return True
+            if re.search(r'defaultaudiolang/(?:pt|pt-br|por)(?:/|%2f)', raw, re.I):
+                return True
+            # Explicit English default means this rendition is not acceptable.
+            if re.search(r'"defaultaudiolang"\s*:\s*"en(?:-us)?"', raw, re.I):
+                return False
+    except Exception:
+        pass
+    try:
+        import requests as _requests
+        ss=session or _requests.Session()
+        r=ss.get(url,headers={'User-Agent':UA,'Referer':BASE+'/pt-br/'},timeout=18)
+        if r.status_code != 200: return False
+        txt=r.text
+        # HLS EXT-X-MEDIA audio groups normally identify the language with
+        # LANGUAGE="pt", LANGUAGE="pt-BR" or NAME="Português".
+        if re.search(r'EXT-X-MEDIA[^\n]*TYPE=AUDIO[^\n]*(?:LANGUAGE|NAME)=["\'](?:pt(?:-BR)?|por|portugu[eê]s)', txt, re.I):
+            return True
+        if re.search(r'(?:LANGUAGE|NAME)=["\'](?:pt(?:-BR)?|por|portugu[eê]s)["\']', txt, re.I):
+            return True
+    except Exception as e:
+        logging.debug('Manifesto não pôde ser analisado: %s',e)
+    return False
+
 async def capture_stream(page,url):
     found=[]
     def on_response(resp):
@@ -125,7 +198,8 @@ async def capture_stream(page,url):
         if STREAM_RE.search(u): found.append(u)
     page.on('response',on_response)
     try:
-        await page.goto(url,wait_until='domcontentloaded',timeout=40000); await accept_cookies(page); await page.wait_for_timeout(2200)
+        await page.goto(localize_runtime_url(url),wait_until='domcontentloaded',timeout=40000); await accept_cookies(page); await page.wait_for_timeout(2200)
+        await select_portuguese_audio(page)
         # Prefer explicit player controls, then inspect video/source elements.
         for sel in ['button[aria-label*="play" i]','button[title*="play" i]','[role=button][aria-label*="play" i]','button[aria-label*="assistir" i]','video']:
             try:
@@ -152,8 +226,15 @@ async def capture_stream(page,url):
     for u in found:
         if u.startswith(('http://','https://')) and STREAM_RE.search(u) and not any(x in u.lower() for x in ['doubleclick','googleads','analytics','facebook.com']): cand.append(u)
     cand=list(dict.fromkeys(cand)); h=[x for x in cand if re.search(r'\.m3u8(?:$|[?#])',x,re.I)]; d=[x for x in cand if re.search(r'\.mpd(?:$|[?#])',x,re.I)]
-    if h:return h[0],'hls'
-    if d:return d[0],'dash'
+    if h:
+        for u in h:
+            if manifest_has_portuguese(u):
+                return u,'hls'
+        logging.info('VOD sem áudio português explícito: %s',url)
+        return '',''
+    if d:
+        logging.info('VOD DASH sem verificação de áudio português: %s',url)
+        return '',''
     return '',''
 
 async def scrape(max_categories=100,max_items=2000,concurrency=3):
@@ -179,7 +260,7 @@ async def scrape(max_categories=100,max_items=2000,concurrency=3):
             async with sem:
                 c=await browser.new_context(locale='pt-BR',user_agent=UA); p=await c.new_page()
                 try:
-                    resp=await p.request.get(u,timeout=25000); html=await resp.text(); item=parse_item(html,u)
+                    u=localize_runtime_url(u); resp=await p.request.get(u,timeout=25000); html=await resp.text(); item=parse_item(html,u)
                     if not item:return None
                     # Categorias are inferred from links on the film page too.
                     stream,typ=await capture_stream(p,u)
