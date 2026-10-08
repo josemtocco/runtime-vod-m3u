@@ -1,0 +1,51 @@
+name: Atualizar lista VOD Runtime.tv
+
+on:
+  schedule:
+    # A cada 6 horas (00:00, 06:00, 12:00, 18:00 UTC)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}   # permite rodar manualmente pelo botao "Run workflow"
+
+permissions:
+  contents: write
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Gerar lista M3U
+        run: python gerar_runtime_vod.py
+
+      - name: Commit e push da lista atualizada
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add playlists/runtime_vod.m3u
+          if git diff --staged --quiet; then
+            echo "Nenhuma mudanca na lista."
+            exit 0
+          fi
+          git commit -m "Atualizacao automatica da lista VOD ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+          # O remoto pode ter avancado (push manual ou outra execucao).
+          # Reconcilia com rebase antes de empurrar e tenta algumas vezes.
+          for i in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              echo "Push OK na tentativa $i."
+              exit 0
+            fi
+            echo "Push rejeitado (tentativa $i). Atualizando com rebase..."
+            git pull --rebase --autostash origin main || true
+            sleep 3
+          done
+          echo "Falha ao empurrar apos varias tentativas." >&2
+          exit 1
