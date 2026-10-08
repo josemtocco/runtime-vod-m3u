@@ -1,65 +1,48 @@
 name: Atualizar Runtime VOD
-
 on:
   schedule:
     - cron: "0 */6 * * *"
   workflow_dispatch:
-
 permissions:
   contents: write
-
 concurrency:
   group: runtime-vod-update
   cancel-in-progress: false
-
 jobs:
   update:
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 55
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - uses: actions/checkout@v5
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
-
       - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
-
       - name: Gerar catálogo e M3U
-        run: python gerar_m3u.py --max-pages 250 --max-items 600 --concurrency 3 --verbose
-
-      - name: Diagnóstico da saída
+        env:
+          SHORTEN_URLS: "true"
+        run: python gerar_m3u.py --max-categories 100 --max-items 2000 --concurrency 4 --verbose
+      - name: Diagnóstico
         if: always()
         run: |
-          echo "M3U entries:"
-          grep -c '^#EXTINF:' runtime_vod.m3u || true
-          echo "Catalog:"
-          python - <<'PY'
+          echo "M3U entries:"; grep -c '^#EXTINF:' runtime_vod.m3u || true
+          echo "Catalog:"; python - <<'PY'
           import json
           from pathlib import Path
           p=Path('catalogo.json')
           if p.exists():
-              d=json.loads(p.read_text(encoding='utf-8'))
-              print('itens=',len(d),'ativos=',sum(bool(x.get('active') and x.get('stream_url')) for x in d.values()))
+            d=json.loads(p.read_text(encoding='utf8'))
+            print('itens=',len(d),'ativos=',sum(bool(x.get('active') and x.get('stream_url')) for x in d.values()))
           PY
-
       - name: Commit alterações
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add catalogo.json runtime_vod.m3u
-          if git diff --cached --quiet; then
-            echo "Nenhuma alteração."
-          else
-            git commit -m "Atualiza catálogo Runtime VOD"
-            git push
-          fi
+          if git diff --cached --quiet; then echo "Nenhuma alteração."; else git commit -m "Atualiza Runtime VOD"; git push; fi
