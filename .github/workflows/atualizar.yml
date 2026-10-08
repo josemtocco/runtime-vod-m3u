@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
       - name: Checkout
@@ -36,6 +36,21 @@ jobs:
 
       - name: Gerar catálogo e M3U
         run: python gerar_m3u.py --max-pages 250 --max-items 600 --concurrency 3 --verbose
+
+      - name: Diagnóstico da saída
+        if: always()
+        run: |
+          echo "M3U entries:"
+          grep -c '^#EXTINF:' runtime_vod.m3u || true
+          echo "Catalog:"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('catalogo.json')
+          if p.exists():
+              d=json.loads(p.read_text(encoding='utf-8'))
+              print('itens=',len(d),'ativos=',sum(bool(x.get('active') and x.get('stream_url')) for x in d.values()))
+          PY
 
       - name: Commit alterações
         run: |
