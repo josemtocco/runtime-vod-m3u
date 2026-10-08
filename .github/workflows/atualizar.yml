@@ -1,48 +1,57 @@
-name: Atualizar Runtime VOD
+name: Atualizar Runtime VOD Brasil
+
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: '0 */6 * * *'
   workflow_dispatch:
+
 permissions:
   contents: write
-concurrency:
-  group: runtime-vod-update
-  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-24.04
-    timeout-minutes: 55
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
-        with: {fetch-depth: 0}
-      - uses: actions/setup-python@v6
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          python-version: "3.12"
-          cache: pip
-      - name: Instalar dependências
+          fetch-depth: 1
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Dependências
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
+
       - name: Gerar catálogo e M3U
         env:
-          SHORTEN_URLS: "true"
-        run: python gerar_m3u.py --max-categories 100 --max-items 2000 --concurrency 6 --verbose
-      - name: Diagnóstico
-        if: always()
+          SHORTEN_URLS: 'true'
+          MIN_ACTIVE_RATIO: '0.20'
         run: |
-          echo "M3U entries:"; grep -c '^#EXTINF:' runtime_vod.m3u || true
-          echo "Catalog:"; python - <<'PY'
+          python gerar_m3u.py --max-categories 120 --max-items 1200 --concurrency 6 --verbose
+
+      - name: Validar saída
+        run: |
+          test -s runtime_vod.m3u
+          echo "M3U entries:"
+          grep -c '^#EXTINF:' runtime_vod.m3u
+          echo "Catalog:"
+          python - <<'PY'
           import json
-          from pathlib import Path
-          p=Path('catalogo.json')
-          if p.exists():
-            d=json.loads(p.read_text(encoding='utf8'))
-            print('itens=',len(d),'ativos=',sum(bool(x.get('active') and x.get('stream_url')) for x in d.values()))
+          d=json.load(open('catalogo.json',encoding='utf-8'))
+          print('itens=',len(d),'ativos=',sum(bool(x.get('active') and x.get('stream_url')) for x in d.values()))
           PY
-      - name: Commit alterações
+
+      - name: Commit
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add catalogo.json runtime_vod.m3u
-          if git diff --cached --quiet; then echo "Nenhuma alteração."; else git commit -m "Atualiza Runtime VOD"; git push; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add runtime_vod.m3u catalogo.json
+          git diff --cached --quiet || git commit -m 'Atualizar catálogo Runtime Brasil'
+          git push
