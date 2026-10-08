@@ -1,330 +1,191 @@
 from __future__ import annotations
-
-import asyncio
-import json
-import logging
-import re
-import time
-from dataclasses import asdict, dataclass
-from typing import Iterable
+import asyncio, json, logging, re, time
+from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
-
 import requests
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
-BASE = "https://www.runtime.tv"
-START_URL = "https://www.runtime.tv/pt-br"
-ROBOTS_URL = f"{BASE}/robots.txt"
-SITEMAP_CANDIDATES = [f"{BASE}/sitemap.xml", f"{BASE}/sitemap_index.xml", f"{BASE}/pt-br/sitemap.xml"]
-FEATURE_RE = re.compile(r"^/pt-br/feature/[^?#]+/?$")
-COLLECTION_RE = re.compile(r"^/collections/[^?#]+/?$")
-STREAM_RE = re.compile(r"\.(?:m3u8|mpd)(?:$|[?#])", re.I)
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
-    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-}
+BASE='https://www.runtime.tv'
+START='https://www.runtime.tv/pt-br'
+UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Safari/537.36'
+HEADERS={'User-Agent':UA,'Accept-Language':'pt-BR,pt;q=0.9,en;q=0.8'}
+FEATURE_RE=re.compile(r'^/(?:pt-br/)?feature/[^?#]+/?$',re.I)
+COLLECTION_RE=re.compile(r'^/(?:pt-br/)?collections/[^?#]+/?$',re.I)
+STREAM_RE=re.compile(r'\.(?:m3u8|mpd)(?:$|[?#])',re.I)
 
 @dataclass
 class Item:
-    key: str
-    title: str
-    url: str
-    genres: list[str]
-    description: str
-    logo: str
-    stream_url: str = ""
-    stream_type: str = ""
-    last_seen: str = ""
-    active: bool = False
+    key:str; title:str; url:str; genres:list[str]; description:str; logo:str
+    stream_url:str=''; stream_type:str=''; last_seen:str=''; active:bool=False
+    category_urls:list[str]=None
 
+def clean(s): return re.sub(r'\s+',' ',s or '').strip()
+def canon(u):
+    p=urlparse(u); return f'{p.scheme}://{p.netloc}{p.path.rstrip("/") or "/"}'
+def same_host(u): return urlparse(u).netloc.lower() in {'runtime.tv','www.runtime.tv'}
+def is_feature(u): return same_host(u) and bool(FEATURE_RE.match(urlparse(u).path))
+def is_collection(u): return same_host(u) and bool(COLLECTION_RE.match(urlparse(u).path))
 
-def clean(s: str) -> str:
-    return re.sub(r"\s+", " ", s or "").strip()
-
-
-def canonical(url: str) -> str:
-    p = urlparse(url)
-    return f"{p.scheme}://{p.netloc}{p.path.rstrip('/') or '/'}"
-
-
-def same_host(url: str) -> bool:
-    return urlparse(url).netloc.lower().endswith("runtime.tv")
-
-
-def extract_links(html: str, base: str) -> set[str]:
-    soup = BeautifulSoup(html, "lxml")
-    out = set()
-    for a in soup.find_all("a", href=True):
-        u = canonical(urljoin(base, a["href"]))
-        path = urlparse(u).path
-        if same_host(u) and (FEATURE_RE.match(path) or COLLECTION_RE.match(path)):
-            out.add(u)
+def all_links(html, base):
+    soup=BeautifulSoup(html,'lxml'); out=set()
+    for a in soup.find_all('a',href=True):
+        try:
+            u=canon(urljoin(base,a['href']))
+            if same_host(u): out.add(u)
+        except: pass
     return out
 
-
-def parse_item(html: str, url: str) -> Item | None:
-    soup = BeautifulSoup(html, "lxml")
-    path = urlparse(url).path
-    if not FEATURE_RE.match(path):
-        return None
-
-    title = ""
-    h1 = soup.find("h1")
-    if h1:
-        title = clean(h1.get_text(" ", strip=True))
+def parse_item(html,url,category_urls=None):
+    soup=BeautifulSoup(html,'lxml');
+    if not is_feature(url): return None
+    title=''
+    h=soup.find('h1')
+    if h: title=clean(h.get_text(' ',strip=True))
     if not title:
-        og = soup.find("meta", attrs={"property": "og:title"})
-        title = clean(og.get("content", "")) if og else ""
-    if not title:
-        title = clean(soup.title.get_text(" ", strip=True)) if soup.title else ""
-    title = re.sub(r"\s*\|\s*Runtime\s*$", "", title, flags=re.I)
-    if not title:
-        return None
-
-    desc = ""
-    md = soup.find("meta", attrs={"name": "description"})
-    if md:
-        desc = clean(md.get("content", ""))
+        m=soup.find('meta',attrs={'property':'og:title'}); title=clean(m.get('content','')) if m else ''
+    if not title and soup.title: title=clean(soup.title.get_text(' ',strip=True))
+    title=re.sub(r'\s*\|\s*Runtime\s*$','',title,flags=re.I)
+    if not title: return None
+    desc=''; m=soup.find('meta',attrs={'name':'description'})
+    if m: desc=clean(m.get('content',''))
     if not desc:
-        ogd = soup.find("meta", attrs={"property": "og:description"})
-        desc = clean(ogd.get("content", "")) if ogd else ""
+        m=soup.find('meta',attrs={'property':'og:description'}); desc=clean(m.get('content','')) if m else ''
+    logo=''; m=soup.find('meta',attrs={'property':'og:image'})
+    if m: logo=urljoin(url,m.get('content',''))
+    genres=[]
+    for a in soup.select('a[href*="/collections/"]'):
+        t=clean(a.get_text(' ',strip=True))
+        if t and len(t)<60: genres.append(t)
+    text=clean(soup.get_text(' ',strip=True))
+    mm=re.search(r'(?:Genres|Gêneros)\s+(.*?)(?:Director|Diretor|Actor|Ator|$)',text,re.I)
+    if mm:
+        genres += [clean(x) for x in re.split(r'[,|•/]+',mm.group(1)) if clean(x)]
+    genres=list(dict.fromkeys(x for x in genres if 1<len(x)<60))[:6]
+    return Item(canon(url),title,canon(url),genres,desc,logo,category_urls=list(category_urls or []))
 
-    logo = ""
-    ogi = soup.find("meta", attrs={"property": "og:image"})
-    if ogi:
-        logo = urljoin(url, ogi.get("content", ""))
-
-    genres: list[str] = []
-    text = soup.get_text(" ", strip=True)
-    m = re.search(r"Genres\s+(.*?)(?:Director\(s\)|Director|Actor\(s\)|Actor|$)", text, re.I)
-    if m:
-        raw = clean(m.group(1))
-        genres = [clean(x) for x in re.split(r"\s{2,}|\s*[,|•]\s*", raw) if clean(x)]
-    if not genres:
-        genres = [clean(x.get_text(" ", strip=True)) for x in soup.select("a[href*='/collections/']")]
-    genres = list(dict.fromkeys(x for x in genres if 1 < len(x) < 50))[:6]
-
-    return Item(
-        key=canonical(url), title=title, url=canonical(url), genres=genres,
-        description=desc, logo=logo,
-    )
-
-
-def json_ld_urls(html: str, page_url: str) -> set[str]:
-    out = set()
-    soup = BeautifulSoup(html, "lxml")
-    for script in soup.find_all("script", type="application/ld+json"):
+async def accept_cookies(page):
+    for sel in ['text=I agree to allow cookies','text=Allow cookies','button:has-text("Allow cookies")','button:has-text("I agree")']:
         try:
-            data = json.loads(script.string or script.get_text())
-        except Exception:
-            continue
-        stack = data if isinstance(data, list) else [data]
-        while stack:
-            x = stack.pop()
-            if isinstance(x, dict):
-                for k, v in x.items():
-                    if isinstance(v, str) and (STREAM_RE.search(v) or "video" in k.lower() or "contenturl" in k.lower()):
-                        if STREAM_RE.search(v): out.add(urljoin(page_url, v))
-                    elif isinstance(v, (dict, list)): stack.append(v)
-            elif isinstance(x, list): stack.extend(x)
-    return out
+            loc=page.locator(sel).first
+            if await loc.is_visible(timeout=500):
+                await loc.click(force=True); await page.wait_for_timeout(500); break
+        except: pass
 
+async def extract_page_links(page):
+    try:
+        return {canon(x) for x in await page.locator('a[href]').evaluate_all('els=>els.map(e=>e.href).filter(Boolean)') if same_host(x)}
+    except: return set()
 
-async def capture_stream(page, url: str, timeout_ms: int = 25000) -> tuple[str, str, str]:
-    found: list[str] = []
-    drm = {"encrypted-media", "widevine", "playready", "fairplay", "clearkey"}
+async def expand_page(page, rounds=12):
+    # Scroll and activate common "load more" controls until no growth.
+    last=0; stable=0
+    for _ in range(rounds):
+        await page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+        await page.wait_for_timeout(900)
+        for sel in ['button:has-text("Load more")','button:has-text("Carregar mais")','a:has-text("Load more")','a:has-text("Carregar mais")','[aria-label*="load more" i]']:
+            try:
+                loc=page.locator(sel); n=min(await loc.count(),3)
+                for i in range(n):
+                    try: await loc.nth(i).click(force=True,timeout=700); await page.wait_for_timeout(900)
+                    except: pass
+            except: pass
+        links=await extract_page_links(page)
+        if len(links)==last: stable+=1
+        else: stable=0; last=len(links)
+        if stable>=3: break
+    return await extract_page_links(page)
 
+async def discover_categories(page):
+    cats=set(); features=set()
+    await page.goto(START,wait_until='domcontentloaded',timeout=40000); await accept_cookies(page); await page.wait_for_timeout(2500)
+    # Open menu/navigation drawers; category links may only exist after interaction.
+    for sel in ['text=MENU','button:has-text("MENU")','[aria-label*="menu" i]','button[class*="menu" i]']:
+        try:
+            loc=page.locator(sel).first
+            if await loc.is_visible(timeout=700): await loc.click(force=True); await page.wait_for_timeout(1200); break
+        except: pass
+    links=await expand_page(page,rounds=8)
+    cats|={x for x in links if is_collection(x)}
+    features|={x for x in links if is_feature(x)}
+    logging.info('Categorias encontradas no menu/home: %d',len(cats))
+    return cats,features
+
+async def discover_category(page,cat):
+    await page.goto(cat,wait_until='domcontentloaded',timeout=40000); await accept_cookies(page); await page.wait_for_timeout(2200)
+    links=await expand_page(page,rounds=20)
+    feats={x for x in links if is_feature(x)}
+    logging.info('Categoria %s -> %d filmes/páginas VOD',cat,len(feats))
+    return feats
+
+async def capture_stream(page,url):
+    found=[]
     def on_response(resp):
-        u = resp.url
-        if STREAM_RE.search(u):
-            found.append(u)
-
-    page.on("response", on_response)
+        u=resp.url
+        if STREAM_RE.search(u): found.append(u)
+    page.on('response',on_response)
     try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+        await page.goto(url,wait_until='domcontentloaded',timeout=40000); await accept_cookies(page); await page.wait_for_timeout(2200)
+        # Prefer explicit player controls, then inspect video/source elements.
+        for sel in ['button[aria-label*="play" i]','button[title*="play" i]','[role=button][aria-label*="play" i]','button[aria-label*="assistir" i]','video']:
+            try:
+                loc=page.locator(sel); n=min(await loc.count(),5)
+                for i in range(n):
+                    try: await loc.nth(i).click(force=True,timeout=1200); await page.wait_for_timeout(2200)
+                    except: pass
+            except: pass
         await page.wait_for_timeout(2500)
-        # Trigger lazy players/buttons when possible without assuming a specific player.
-        for selector in ["button", "[role=button]", "video"]:
-            try:
-                loc = page.locator(selector)
-                n = min(await loc.count(), 10)
-                for i in range(n):
-                    try:
-                        await loc.nth(i).click(timeout=800, force=True)
-                        await page.wait_for_timeout(700)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-        # Tenta controles de reprodução sem clicar indiscriminadamente em todos os botões.
-        for selector in ['button[aria-label*="play" i]', 'button[title*="play" i]', '[role="button"][aria-label*="play" i]', 'button[aria-label*="assistir" i]', 'button[title*="assistir" i]']:
-            try:
-                loc=page.locator(selector); n=min(await loc.count(),3)
-                for i in range(n):
-                    try:
-                        await loc.nth(i).click(timeout=1500, force=True); await page.wait_for_timeout(2200)
-                    except Exception: pass
-            except Exception: pass
-        await page.wait_for_timeout(3000)
-        content = await page.content()
-        found.extend(json_ld_urls(content, url))
-        for m in re.findall(r'https?://[^"\'<>\s]+?\.(?:m3u8|mpd)(?:\?[^"\'<>\s]*)?', content, re.I):
-            found.append(m)
+        html=await page.content()
+        found += re.findall(r'https?://[^"\'<>\s]+?\.(?:m3u8|mpd)(?:\?[^"\'<>\s]*)?',html,re.I)
         try:
-            perf = await page.evaluate("performance.getEntriesByType('resource').map(e => e.name)")
-            found.extend(x for x in perf if STREAM_RE.search(x))
-        except Exception: pass
-        text = content.lower()
-        if any(x in text for x in drm):
-            logging.debug("Possível DRM em %s", url)
-    except PlaywrightTimeoutError:
-        logging.warning("Timeout: %s", url)
-    except Exception as e:
-        logging.debug("Falha navegador %s: %s", url, e)
+            found += [x for x in await page.evaluate("performance.getEntriesByType('resource').map(e=>e.name)") if STREAM_RE.search(x)]
+        except: pass
+        try:
+            found += await page.locator('video,source').evaluate_all("els=>els.map(e=>e.src||e.currentSrc).filter(Boolean)")
+        except: pass
+    except PlaywrightTimeoutError: logging.warning('Timeout VOD: %s',url)
+    except Exception as e: logging.debug('VOD %s: %s',url,e)
     finally:
-        try: page.remove_listener("response", on_response)
-        except Exception: pass
-
-    # Prefer HLS; discard obvious ad/telemetry URLs.
-    candidates = []
+        try: page.remove_listener('response',on_response)
+        except: pass
+    cand=[]
     for u in found:
-        if not u.startswith(("http://", "https://")): continue
-        if any(x in u.lower() for x in ["doubleclick", "googleads", "analytics"]): continue
-        candidates.append(u)
-    candidates = list(dict.fromkeys(candidates))
-    hls = [u for u in candidates if re.search(r"\.m3u8(?:$|[?#])", u, re.I)]
-    dash = [u for u in candidates if re.search(r"\.mpd(?:$|[?#])", u, re.I)]
-    chosen = (hls or dash or [""])[0]
-    typ = "hls" if chosen in hls else ("dash" if chosen else "")
-    return chosen, typ, content if 'content' in locals() else ""
+        if u.startswith(('http://','https://')) and STREAM_RE.search(u) and not any(x in u.lower() for x in ['doubleclick','googleads','analytics','facebook.com']): cand.append(u)
+    cand=list(dict.fromkeys(cand)); h=[x for x in cand if re.search(r'\.m3u8(?:$|[?#])',x,re.I)]; d=[x for x in cand if re.search(r'\.mpd(?:$|[?#])',x,re.I)]
+    if h:return h[0],'hls'
+    if d:return d[0],'dash'
+    return '',''
 
-
-
-def extract_sitemap_urls(text: str) -> set[str]:
-    out = set()
-    for pair in re.findall(r"(?:<loc>\s*([^<\s]+)\s*</loc>)|(?:^\s*Sitemap:\s*(\S+))", text, re.I | re.M):
-        for value in pair:
-            if value:
-                u = canonical(urljoin(BASE, value))
-                if same_host(u):
-                    out.add(u)
-    return out
-
-
-def sitemap_discovery(session: requests.Session):
-    docs = set(SITEMAP_CANDIDATES)
-    try:
-        r = session.get(ROBOTS_URL, timeout=20)
-        if r.ok:
-            docs |= extract_sitemap_urls(r.text)
-    except Exception as e:
-        logging.debug("robots.txt: %s", e)
-    queue = list(docs); visited = set(); features = set(); collections = set()
-    while queue and len(visited) < 30:
-        u = queue.pop(0)
-        if u in visited: continue
-        visited.add(u)
-        try:
-            r = session.get(u, timeout=25)
-            if not r.ok: continue
-            text = r.text
-            urls = extract_sitemap_urls(text)
-            for x in urls:
-                if x.endswith('.xml') and ('sitemap' in x.lower() or '<sitemapindex' in text.lower()):
-                    if x not in visited: queue.append(x)
-                elif FEATURE_RE.match(urlparse(x).path): features.add(x)
-                elif COLLECTION_RE.match(urlparse(x).path): collections.add(x)
-        except Exception as e:
-            logging.debug("sitemap %s: %s", u, e)
-    return features, collections
-
-
-async def rendered_discovery(page, urls):
-    features=set(); collections=set()
-    for u in urls:
-        try:
-            await page.goto(u, wait_until="domcontentloaded", timeout=30000)
-            await page.wait_for_timeout(2200)
-            hrefs = await page.locator('a[href]').evaluate_all('els => els.map(e => e.href).filter(Boolean)')
-            for href in hrefs:
-                c=canonical(href)
-                if same_host(c):
-                    if FEATURE_RE.match(urlparse(c).path): features.add(c)
-                    elif COLLECTION_RE.match(urlparse(c).path): collections.add(c)
-        except Exception as e:
-            logging.debug("DOM discovery %s: %s", u, e)
-    return features, collections
-
-
-async def scrape(start=START_URL, max_pages=150, max_items=500, concurrency=3):
-    session = requests.Session(); session.headers.update(HEADERS)
-    item_urls: set[str] = set()
-    collection_urls: set[str] = set()
-
-    sf, sc = sitemap_discovery(session)
-    item_urls |= sf; collection_urls |= sc
-    logging.info("Sitemap: %d VOD | %d coleções", len(sf), len(sc))
-
-    queue = [canonical(start)] + sorted(collection_urls)
-    seen_pages = set()
-    while queue and len(seen_pages) < max_pages:
-        batch = []
-        while queue and len(batch) < 10:
-            u = queue.pop(0)
-            if u not in seen_pages: batch.append(u)
-        for u in batch:
-            seen_pages.add(u)
-            try:
-                r = session.get(u, timeout=20)
-                if r.ok:
-                    links = extract_links(r.text, u)
-                    item_urls.update(x for x in links if FEATURE_RE.match(urlparse(x).path))
-                    for x in links:
-                        if COLLECTION_RE.match(urlparse(x).path):
-                            collection_urls.add(x)
-                            if x not in seen_pages and x not in queue:
-                                queue.append(x)
-            except Exception as e:
-                logging.debug("HTTP %s: %s", u, e)
-        if len(item_urls) >= max_items: break
-
-    items: list[Item] = []
+async def scrape(max_categories=100,max_items=2000,concurrency=3):
     async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=True, args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"])
-        dctx = await browser.new_context(locale="pt-BR", user_agent=HEADERS["User-Agent"])
-        dpage = await dctx.new_page()
-        rf, rc = await rendered_discovery(dpage, [start] + sorted(collection_urls)[:max_pages])
-        item_urls |= rf; collection_urls |= rc
-        if rc:
-            more = sorted(rc - set(collection_urls))
-        logging.info("Descoberta total: %d páginas VOD | %d coleções", len(item_urls), len(collection_urls))
-        await dctx.close()
-        sem = asyncio.Semaphore(concurrency)
-
+        browser=await pw.chromium.launch(headless=True,args=['--no-sandbox','--disable-dev-shm-usage','--disable-gpu'])
+        ctx=await browser.new_context(locale='pt-BR',user_agent=UA)
+        page=await ctx.new_page()
+        cats,features=await discover_categories(page)
+        # Fallback: known category route candidates, only used if menu discovery is sparse.
+        seeds=['action','adventure','animation','comedy','crime','documentary','drama','family','horror','romance','science-fiction','sci-fi','thriller','western','classic','foreign','music','mystery','fantasy']
+        for s in seeds:
+            cats.add(f'{BASE}/collections/{s}')
+        cats=list(sorted(cats))[:max_categories]
+        all_features=set(features)
+        for i,cat in enumerate(cats,1):
+            try: all_features |= await discover_category(page,cat)
+            except Exception as e: logging.debug('Categoria %s falhou: %s',cat,e)
+            if len(all_features)>=max_items: break
+        logging.info('TOTAL: %d categorias visitadas | %d páginas VOD descobertas',len(cats),len(all_features))
+        urls=list(sorted(all_features))[:max_items]
+        sem=asyncio.Semaphore(concurrency); items=[]
         async def one(u):
             async with sem:
-                ctx = await browser.new_context(locale="pt-BR", user_agent=HEADERS["User-Agent"])
-                page = await ctx.new_page()
+                c=await browser.new_context(locale='pt-BR',user_agent=UA); p=await c.new_page()
                 try:
-                    r = await page.request.get(u, timeout=20000)
-                    html = await r.text()
-                    item = parse_item(html, u)
-                    if not item: return None
-                    stream, typ, _ = await capture_stream(page, u)
-                    item.stream_url, item.stream_type = stream, typ
-                    item.last_seen = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-                    item.active = bool(stream)
+                    resp=await p.request.get(u,timeout=25000); html=await resp.text(); item=parse_item(html,u)
+                    if not item:return None
+                    # Categorias are inferred from links on the film page too.
+                    stream,typ=await capture_stream(p,u)
+                    item.stream_url=stream; item.stream_type=typ; item.active=bool(stream); item.last_seen=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
                     return item
-                except Exception as e:
-                    logging.debug("Item %s: %s", u, e)
-                    return None
-                finally:
-                    await ctx.close()
-
-        urls = list(item_urls)[:max_items]
-        results = await asyncio.gather(*(one(u) for u in urls))
-        await browser.close()
-        items = [x for x in results if x]
-    return items
+                except Exception as e: logging.debug('Item %s: %s',u,e); return None
+                finally: await c.close()
+        results=await asyncio.gather(*(one(u) for u in urls)); items=[x for x in results if x]
+        await browser.close(); return items,cats

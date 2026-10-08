@@ -1,97 +1,55 @@
 from __future__ import annotations
-import argparse, asyncio, json, logging, os, re, sys, time
+import argparse,asyncio,json,logging,os,time
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote
+import requests
+from runtime_scraper import scrape
+ROOT=Path(__file__).resolve().parent; STATE=ROOT/'catalogo.json'; OUT=ROOT/'runtime_vod.m3u'
+SHORTEN=os.getenv('SHORTEN_URLS','true').lower() not in {'0','false','no'}
+TINY_TIMEOUT=int(os.getenv('TINYURL_TIMEOUT','20'))
 
-from runtime_scraper import scrape, Item
-
-ROOT = Path(__file__).resolve().parent
-STATE = ROOT / "catalogo.json"
-OUT = ROOT / "runtime_vod.m3u"
-
-
-def load_state():
-    if not STATE.exists(): return {}
+def load():
     try:
-        data = json.loads(STATE.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
+        d=json.loads(STATE.read_text(encoding='utf8')); return d if isinstance(d,dict) else {}
+    except: return {}
+def esc(s): return (s or '').replace('"',"'").replace('\n',' ').strip()
+def shorten(url,session):
+    if not SHORTEN or not url:return url
+    try:
+        r=session.get('https://tinyurl.com/api-create.php',params={'url':url},timeout=TINY_TIMEOUT,headers={'User-Agent':'runtime-vod-m3u/3.0'})
+        u=r.text.strip()
+        if u.startswith('https://tinyurl.com/') and len(u)<100:return u
+    except Exception as e: logging.warning('TinyURL falhou: %s',e)
+    return url
 
-
-def esc(s):
-    return (s or "").replace('"', "'").replace("\n", " ").strip()
-
-
-def group(item):
-    if item.genres:
-        return "Runtime | " + " / ".join(item.genres[:2])
-    return "Runtime | VOD"
-
-
-def merge(items, old):
-    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    current = {}
+def merge(items,old):
+    now=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()); cur={}
     for x in items:
-        d = x.__dict__.copy()
-        d["last_seen"] = now
-        d["active"] = bool(d.get("stream_url"))
-        current[x.key] = d
-
-    # Preserve metadata for known entries only when the current scan failed to rediscover them.
-    # They are NOT written to M3U as active; this avoids stale playback URLs.
-    merged = dict(old)
-    for k, d in current.items():
-        merged[k] = d
-    for k, d in merged.items():
-        if k not in current:
-            d["active"] = False
+        d=x.__dict__.copy(); d['last_seen']=now; d['active']=bool(d.get('stream_url')); cur[x.key]=d
+    merged=dict(old)
+    for k,d in cur.items(): merged[k]=d
+    for k in list(merged):
+        if k not in cur: merged[k]['active']=False
     return merged
 
-
-def write_m3u(catalog):
-    active = [d for d in catalog.values() if d.get("active") and d.get("stream_url")]
-    active.sort(key=lambda d: (group_obj(d).lower(), d.get("title", "").lower()))
-    lines = ["#EXTM3U"]
+def write_m3u(cat):
+    active=[d for d in cat.values() if d.get('active') and d.get('stream_url')]
+    active.sort(key=lambda d:((d.get('genres') or ['VOD'])[0].lower(),d.get('title','').lower()))
+    sess=requests.Session(); lines=['#EXTM3U']
     for d in active:
-        title = esc(d.get("title"))
-        logo = esc(d.get("logo"))
-        g = esc(group_obj(d))
-        attrs = [f'tvg-name="{title}"', f'group-title="{g}"']
-        if logo: attrs.append(f'tvg-logo="{logo}"')
-        lines.append(f'#EXTINF:-1 {" ".join(attrs)},{title}')
-        lines.append(d["stream_url"])
-    OUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return len(active)
-
-
-def group_obj(d):
-    genres = d.get("genres") or []
-    return "Runtime | " + " / ".join(genres[:2]) if genres else "Runtime | VOD"
-
+        title=esc(d.get('title')); genres=d.get('genres') or ['VOD']; group='Runtime | '+genres[0]
+        attrs=f'tvg-name="{title}" group-title="{esc(group)}"'
+        if d.get('logo'): attrs+=f' tvg-logo="{esc(d["logo"])}"'
+        short=shorten(d['stream_url'],sess); d['playlist_url']=short
+        lines += [f'#EXTINF:-1 {attrs},{title}',short]
+    OUT.write_text('\n'.join(lines)+'\n',encoding='utf8'); return len(active)
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--max-pages", type=int, default=150)
-    ap.add_argument("--max-items", type=int, default=500)
-    ap.add_argument("--concurrency", type=int, default=3)
-    ap.add_argument("--verbose", action="store_true")
-    args = ap.parse_args()
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
-
-    old = load_state()
-    logging.info("Catálogo anterior: %d itens", len(old))
-    items = asyncio.run(scrape(max_pages=args.max_pages, max_items=args.max_items, concurrency=args.concurrency))
-    logging.info("Itens processados: %d | com stream: %d", len(items), sum(bool(x.stream_url) for x in items))
-    if not items and old:
-        logging.error("Nenhum conteúdo descoberto. Preservando M3U anterior.")
-        return 2
-    catalog = merge(items, old)
-    STATE.write_text(json.dumps(catalog, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
-    n = write_m3u(catalog)
-    logging.info("M3U gerada: %d itens ativos", n)
-    if n == 0 and not old:
-        logging.warning("Nenhum stream público foi capturado; catálogo salvo para diagnóstico.")
-
-if __name__ == "__main__":
-    main()
+    ap=argparse.ArgumentParser(); ap.add_argument('--max-categories',type=int,default=100); ap.add_argument('--max-items',type=int,default=2000); ap.add_argument('--concurrency',type=int,default=4); ap.add_argument('--verbose',action='store_true'); a=ap.parse_args()
+    logging.basicConfig(level=logging.DEBUG if a.verbose else logging.INFO,format='%(asctime)s | %(levelname)s | %(message)s')
+    old=load(); logging.info('Catálogo anterior: %d itens',len(old))
+    items,cats=asyncio.run(scrape(a.max_categories,a.max_items,a.concurrency)); logging.info('Categorias: %d | Itens processados: %d | com stream: %d',len(cats),len(items),sum(bool(x.stream_url) for x in items))
+    if not items:
+        logging.error('Nenhum VOD processado; preservando catálogo e M3U anterior.'); return 2
+    cat=merge(items,old); n=write_m3u(cat); STATE.write_text(json.dumps(cat,ensure_ascii=False,indent=2,sort_keys=True),encoding='utf8'); logging.info('M3U gerada: %d itens ativos',n)
+if __name__=='__main__': main()
