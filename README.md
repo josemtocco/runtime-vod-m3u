@@ -1,34 +1,41 @@
-# runtime-vod-m3u v4
+# Runtime VOD — Brasil (busca profunda)
 
-Projeto para gerar uma M3U de VOD da **Runtime Brasil**, otimizada para SS IPTV.
+Projeto para gerar uma playlist M3U leve para SS IPTV usando somente conteúdo público do catálogo brasileiro da Runtime (`/pt-br/`).
 
-## Objetivo
+## O que esta versão corrige
 
-A versão 4 é específica para o catálogo brasileiro. Ela força URLs `/pt-br/...`, percorre as categorias/coleções brasileiras e só inclui um título quando consegue capturar uma reprodução pública cuja variante HLS indique áudio em português (`pt`, `pt-BR` ou `por`).
+A versão anterior encontrou somente uma fração do catálogo. Esta versão não depende de uma lista fixa de categorias. Ela combina várias camadas de descoberta:
 
-A versão anterior podia abrir `/feature/...` internacional e capturar manifests cujo `defaultAudioLang` era `en`. Essa versão evita esse comportamento.
+1. página inicial e menu brasileiro;
+2. rolagem/infinite scroll e botões de carregar mais;
+3. todas as coleções encontradas no site;
+4. exploração recursiva da navegação pública;
+5. sitemap.xml / sitemap index / robots.txt quando disponíveis;
+6. respostas JSON/API/GraphQL públicas observadas pelo navegador;
+7. URLs de filmes encontradas dentro de HTML, JavaScript e JSON;
+8. categorias conhecidas apenas como complemento, sempre em `/pt-br/`;
+9. abertura individual de cada página de filme para descobrir o stream;
+10. tentativa de seleção de áudio Português/Português (Brasil);
+11. validação do HLS para não aceitar deliberadamente uma faixa identificada como inglês.
 
-## Fluxo
-
-1. Abre `https://www.runtime.tv/pt-br`.
-2. Descobre coleções/categorias e normaliza tudo para `/pt-br/collections/...`.
-3. Percorre cada categoria com rolagem/carregamento progressivo.
-4. Normaliza cada filme para `/pt-br/feature/...`.
-5. Abre cada título no Chromium em locale `pt-BR`.
-6. Tenta selecionar áudio Português/Portuguese quando o player expõe essa opção.
-7. Captura `.m3u8`/`.mpd` do player.
-8. Para HLS, verifica o manifesto e o payload para identificar áudio português.
-9. Descarta conteúdos cujo stream identificado seja explicitamente inglês.
-10. Gera `runtime_vod.m3u` com o nome real do conteúdo.
-11. Opcionalmente encurta a URL final com TinyURL.
-12. Mantém o catálogo incremental e preserva a M3U anterior se a descoberta falhar completamente.
+A busca profunda é complementar: nenhuma fonte de descoberta substitui as outras.
 
 ## Atualização
 
-O GitHub Actions executa a atualização a cada 6 horas e também pode ser iniciado manualmente.
+O GitHub Actions executa automaticamente a cada 6 horas e também permite execução manual.
+
+## Incremental
+
+`catalogo.json` mantém os registros já conhecidos. A cada execução são adicionados novos títulos e atualizados os encontrados novamente. A M3U contém somente itens ativos com stream válido. Se uma execução não encontrar nenhum item, o projeto preserva a M3U anterior para evitar apagar a playlist por uma falha temporária.
+
+## SS IPTV
+
+A playlist usa `#EXTINF`, `tvg-name`, `tvg-logo` e `group-title`. Os links podem ser encurtados com TinyURL (`SHORTEN_URLS=true`). O encurtamento é somente um redirecionamento: não transforma um stream temporário em permanente.
+
+## Limites
+
+A execução padrão permite até 300 coleções e 10.000 páginas VOD descobertas. O objetivo é alcançar o catálogo completo disponível publicamente, sem depender de uma contagem artificial de filmes.
 
 ## Importante
 
-O fato de a página estar em `/pt-br` não garante, por si só, que a faixa de áudio do vídeo seja dublada em português. Por isso a v4 exige uma indicação de idioma no stream/player quando disponível.
-
-Não há tentativa de contornar DRM, autenticação ou proteção de conteúdo. Apenas streams públicos disponibilizados pela própria página são considerados.
+O projeto acessa somente páginas e streams públicos disponibilizados pelo site. Não tenta contornar DRM, autenticação, assinatura ou outros controles de acesso.

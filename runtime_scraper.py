@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio, json, logging, re, time
 from dataclasses import dataclass
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, parse_qs, unquote
 import requests
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
@@ -109,24 +109,125 @@ async def expand_page(page, rounds=12):
         if stable>=3: break
     return await extract_page_links(page)
 
+async def sitemap_urls(request):
+    """Walk public sitemap/index files exposed by Runtime."""
+    seen=set(); found=set(); queue=[
+        f'{BASE}/sitemap.xml', f'{BASE}/sitemap_index.xml',
+        f'{BASE}/pt-br/sitemap.xml', f'{BASE}/pt-br/sitemap_index.xml',
+        f'{BASE}/robots.txt'
+    ]
+    while queue and len(seen)<40:
+        u=queue.pop(0)
+        if u in seen: continue
+        seen.add(u)
+        try:
+            r=await request.get(u,timeout=20000,headers={'User-Agent':UA,'Accept-Language':'pt-BR,pt;q=0.9'})
+            if r.status!=200: continue
+            txt=await r.text()
+            if u.endswith('robots.txt'):
+                for m in re.findall(r'(?im)^\s*Sitemap:\s*(\S+)',txt): queue.append(m.strip())
+                continue
+            locs=re.findall(r'<loc>\s*(.*?)\s*</loc>',txt,re.I|re.S)
+            for loc in locs:
+                loc=unquote(clean(loc))
+                if loc.lower().endswith('.xml') and ('sitemap' in loc.lower() or 'index' in loc.lower()):
+                    queue.append(loc)
+                elif same_host(loc):
+                    loc=localize_runtime_url(loc)
+                    if is_feature(loc): found.add(loc)
+        except Exception as e: logging.debug('Sitemap %s: %s',u,e)
+    logging.info('Sitemap/robots: %d páginas VOD',len(found))
+    return found
+
+async def discover_network(page):
+    """Capture public API/JSON responses and recursively extract Runtime URLs."""
+    features=set(); cats=set(); api_urls=set(); bodies=[]
+    async def response_handler(resp):
+        u=resp.url
+        if not same_host(u): return
+        ct=(resp.headers.get('content-type') or '').lower()
+        if 'json' not in ct and not any(x in u.lower() for x in ['/api/','graphql','catalog','search','collection']): return
+        try:
+            txt=await resp.text()
+            if len(txt)>3_000_000: txt=txt[:3_000_000]
+            bodies.append(txt)
+            if '/api/' in u.lower() or 'graphql' in u.lower() or 'catalog' in u.lower() or 'search' in u.lower(): api_urls.add(u)
+        except: pass
+    page.on('response',response_handler)
+    try:
+        await page.goto(START,wait_until='domcontentloaded',timeout=50000)
+        await accept_cookies(page); await expand_page(page,rounds=15)
+        await page.wait_for_timeout(2500)
+    except Exception as e: logging.debug('Bootstrap network: %s',e)
+    finally:
+        try: page.remove_listener('response',response_handler)
+        except: pass
+    # Extract URLs from raw JSON/JS response bodies. This catches APIs whose
+    # records are not represented as ordinary <a> elements.
+    for txt in bodies:
+        for raw in re.findall(r'https?://(?:www\.)?runtime\.tv[^"\'\\<>\s]+',txt,re.I):
+            u=localize_runtime_url(raw.replace('\\/','/'))
+            if is_feature(u): features.add(u)
+            elif is_collection(u): cats.add(u)
+        for raw in re.findall(r'(?<![A-Za-z0-9])/(?:pt-br/)?(?:feature|collections)/[^"\'\\<>\s?#]+',txt,re.I):
+            u=localize_runtime_url(urljoin(BASE,raw.replace('\\/','/')))
+            if is_feature(u): features.add(u)
+            elif is_collection(u): cats.add(u)
+    # Also inspect resource URLs, useful for REST/GraphQL endpoints.
+    try:
+        resources=await page.evaluate("performance.getEntriesByType('resource').map(e=>e.name)")
+        api_urls |= {u for u in resources if same_host(u) and any(x in u.lower() for x in ['/api/','graphql','catalog','search','collection'])}
+    except: pass
+    logging.info('Rede/API: %d endpoints | %d filmes | %d coleções',len(api_urls),len(features),len(cats))
+    return features,cats,api_urls
+
+async def crawl_navigation(page, seeds, max_pages=500, max_depth=3):
+    """Breadth-first crawl of Runtime's public navigation, restricted to likely catalog routes."""
+    q=[(localize_runtime_url(x),0) for x in seeds]
+    seen=set(); features=set(); cats=set()
+    allow_words=('pt-br','feature','collections','movie','movies','film','films','catalog','browse','discover','search','serie','series','genre','genero')
+    while q and len(seen)<max_pages:
+        u,d=q.pop(0)
+        u=localize_runtime_url(u)
+        if u in seen or not same_host(u): continue
+        path=urlparse(u).path.lower()
+        if d>0 and not any(w in path for w in allow_words): continue
+        seen.add(u)
+        if is_feature(u): features.add(u); continue
+        if is_collection(u): cats.add(u)
+        try:
+            await page.goto(u,wait_until='domcontentloaded',timeout=30000)
+            await accept_cookies(page)
+            links=await expand_page(page,rounds=8 if d<2 else 4)
+            for x in links:
+                x=localize_runtime_url(x)
+                if is_feature(x): features.add(x)
+                elif is_collection(x): cats.add(x)
+                elif d<max_depth and same_host(x):
+                    xp=urlparse(x).path.lower()
+                    if any(w in xp for w in allow_words): q.append((x,d+1))
+        except Exception as e: logging.debug('Crawl %s: %s',u,e)
+    logging.info('Crawl navegação: %d páginas | %d filmes | %d coleções',len(seen),len(features),len(cats))
+    return features,cats
+
 async def discover_categories(page):
     cats=set(); features=set()
-    await page.goto(START,wait_until='domcontentloaded',timeout=40000); await accept_cookies(page); await page.wait_for_timeout(2500)
-    # Open menu/navigation drawers; category links may only exist after interaction.
+    await page.goto(START,wait_until='domcontentloaded',timeout=50000); await accept_cookies(page); await page.wait_for_timeout(2500)
     for sel in ['text=MENU','button:has-text("MENU")','[aria-label*="menu" i]','button[class*="menu" i]']:
         try:
             loc=page.locator(sel).first
-            if await loc.is_visible(timeout=700): await loc.click(force=True); await page.wait_for_timeout(1200); break
+            if await loc.is_visible(timeout=700): await loc.click(force=True); await page.wait_for_timeout(1000); break
         except: pass
-    links=await expand_page(page,rounds=8)
+    links=await expand_page(page,rounds=15)
     cats|={x for x in links if is_collection(x)}
     features|={x for x in links if is_feature(x)}
-    logging.info('Categorias encontradas no menu/home: %d',len(cats))
+    logging.info('Home/menu: %d coleções | %d filmes',len(cats),len(features))
     return cats,features
 
 async def discover_category(page,cat):
-    await page.goto(cat,wait_until='domcontentloaded',timeout=40000); await accept_cookies(page); await page.wait_for_timeout(2200)
-    links=await expand_page(page,rounds=20)
+    cat=localize_runtime_url(cat)
+    await page.goto(cat,wait_until='domcontentloaded',timeout=50000); await accept_cookies(page); await page.wait_for_timeout(1800)
+    links=await expand_page(page,rounds=45)
     feats={x for x in links if is_feature(x)}
     logging.info('Categoria %s -> %d filmes/páginas VOD',cat,len(feats))
     return feats
@@ -237,36 +338,59 @@ async def capture_stream(page,url):
         return '',''
     return '',''
 
-async def scrape(max_categories=100,max_items=2000,concurrency=3):
+async def scrape(max_categories=300,max_items=10000,concurrency=3):
     async with async_playwright() as pw:
         browser=await pw.chromium.launch(headless=True,args=['--no-sandbox','--disable-dev-shm-usage','--disable-gpu'])
         ctx=await browser.new_context(locale='pt-BR',user_agent=UA)
         page=await ctx.new_page()
+
         cats,features=await discover_categories(page)
-        # Fallback: known category route candidates, only used if menu discovery is sparse.
-        seeds=['action','adventure','animation','comedy','crime','documentary','drama','family','horror','romance','science-fiction','sci-fi','thriller','western','classic','foreign','music','mystery','fantasy']
-        for s in seeds:
-            cats.add(f'{BASE}/collections/{s}')
+        net_features,net_cats,api_urls=await discover_network(page)
+        features |= net_features; cats |= net_cats
+
+        # Public sitemap is the deepest/most deterministic catalog source when
+        # Runtime exposes one. It is intentionally combined with DOM/API crawling.
+        features |= await sitemap_urls(ctx.request)
+
+        # Crawl the Brazilian navigation tree rather than relying on a fixed list
+        # of genres. This is important because Runtime can expose hidden rows/pages.
+        nav_seeds={START, f'{BASE}/pt-br', *cats}
+        nav_features,nav_cats=await crawl_navigation(page,nav_seeds,max_pages=700,max_depth=3)
+        features |= nav_features; cats |= nav_cats
+
+        # Fallback seeds, ALWAYS localized. They supplement discovery; they do not
+        # replace it and therefore cannot hide new Runtime categories.
+        seeds=['action','adventure','animation','comedy','crime','documentary','drama','family','horror','romance','science-fiction','sci-fi','thriller','western','classic','foreign','music','mystery','fantasy','war','history','kids','independent','international']
+        for s in seeds: cats.add(f'{BASE}/pt-br/collections/{s}')
+
         cats=list(sorted(cats))[:max_categories]
-        all_features=set(features)
         for i,cat in enumerate(cats,1):
-            try: all_features |= await discover_category(page,cat)
+            try: features |= await discover_category(page,cat)
             except Exception as e: logging.debug('Categoria %s falhou: %s',cat,e)
-            if len(all_features)>=max_items: break
-        logging.info('TOTAL: %d categorias visitadas | %d páginas VOD descobertas',len(cats),len(all_features))
-        urls=list(sorted(all_features))[:max_items]
+            if len(features)>=max_items: break
+
+        features=set(localize_runtime_url(x) for x in features if is_feature(localize_runtime_url(x)))
+        logging.info('DESCOBERTA PROFUNDA: %d categorias | %d páginas VOD',len(cats),len(features))
+        urls=list(sorted(features))[:max_items]
+
         sem=asyncio.Semaphore(concurrency); items=[]
         async def one(u):
             async with sem:
                 c=await browser.new_context(locale='pt-BR',user_agent=UA); p=await c.new_page()
                 try:
-                    u=localize_runtime_url(u); resp=await p.request.get(u,timeout=25000); html=await resp.text(); item=parse_item(html,u)
+                    u=localize_runtime_url(u)
+                    resp=await p.request.get(u,timeout=30000); html=await resp.text(); item=parse_item(html,u)
                     if not item:return None
-                    # Categorias are inferred from links on the film page too.
                     stream,typ=await capture_stream(p,u)
                     item.stream_url=stream; item.stream_type=typ; item.active=bool(stream); item.last_seen=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
                     return item
                 except Exception as e: logging.debug('Item %s: %s',u,e); return None
                 finally: await c.close()
-        results=await asyncio.gather(*(one(u) for u in urls)); items=[x for x in results if x]
+        # Process in batches so very large catalogs do not create thousands of
+        # simultaneous Playwright contexts.
+        for i in range(0,len(urls),120):
+            batch=urls[i:i+120]
+            results=await asyncio.gather(*(one(u) for u in batch)); items.extend(x for x in results if x)
+            logging.info('VOD processados: %d/%d | com stream: %d',min(i+120,len(urls)),len(urls),sum(bool(x.stream_url) for x in items))
         await browser.close(); return items,cats
+

@@ -45,7 +45,7 @@ def write_m3u(cat):
     OUT.write_text('\n'.join(lines)+'\n',encoding='utf8'); return len(active)
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument('--max-categories',type=int,default=100); ap.add_argument('--max-items',type=int,default=2000); ap.add_argument('--concurrency',type=int,default=4); ap.add_argument('--verbose',action='store_true'); a=ap.parse_args()
+    ap=argparse.ArgumentParser(); ap.add_argument('--max-categories',type=int,default=300); ap.add_argument('--max-items',type=int,default=10000); ap.add_argument('--concurrency',type=int,default=4); ap.add_argument('--verbose',action='store_true'); a=ap.parse_args()
     logging.basicConfig(level=logging.DEBUG if a.verbose else logging.INFO,format='%(asctime)s | %(levelname)s | %(message)s')
     old=load(); logging.info('Catálogo anterior: %d itens',len(old))
     items,cats=asyncio.run(scrape(a.max_categories,a.max_items,a.concurrency)); logging.info('Categorias: %d | Itens processados: %d | com stream: %d',len(cats),len(items),sum(bool(x.stream_url) for x in items))
