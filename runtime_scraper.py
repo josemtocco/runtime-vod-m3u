@@ -15,6 +15,8 @@ from playwright.async_api import async_playwright, TimeoutError as PlaywrightTim
 
 BASE = "https://www.runtime.tv"
 START_URL = "https://www.runtime.tv/pt-br"
+ROBOTS_URL = f"{BASE}/robots.txt"
+SITEMAP_CANDIDATES = [f"{BASE}/sitemap.xml", f"{BASE}/sitemap_index.xml", f"{BASE}/pt-br/sitemap.xml"]
 FEATURE_RE = re.compile(r"^/pt-br/feature/[^?#]+/?$")
 COLLECTION_RE = re.compile(r"^/collections/[^?#]+/?$")
 STREAM_RE = re.compile(r"\.(?:m3u8|mpd)(?:$|[?#])", re.I)
@@ -156,9 +158,24 @@ async def capture_stream(page, url: str, timeout_ms: int = 25000) -> tuple[str, 
                         pass
             except Exception:
                 pass
-        await page.wait_for_timeout(2500)
+        # Tenta controles de reprodução sem clicar indiscriminadamente em todos os botões.
+        for selector in ['button[aria-label*="play" i]', 'button[title*="play" i]', '[role="button"][aria-label*="play" i]', 'button[aria-label*="assistir" i]', 'button[title*="assistir" i]']:
+            try:
+                loc=page.locator(selector); n=min(await loc.count(),3)
+                for i in range(n):
+                    try:
+                        await loc.nth(i).click(timeout=1500, force=True); await page.wait_for_timeout(2200)
+                    except Exception: pass
+            except Exception: pass
+        await page.wait_for_timeout(3000)
         content = await page.content()
         found.extend(json_ld_urls(content, url))
+        for m in re.findall(r'https?://[^"\'<>\s]+?\.(?:m3u8|mpd)(?:\?[^"\'<>\s]*)?', content, re.I):
+            found.append(m)
+        try:
+            perf = await page.evaluate("performance.getEntriesByType('resource').map(e => e.name)")
+            found.extend(x for x in perf if STREAM_RE.search(x))
+        except Exception: pass
         text = content.lower()
         if any(x in text for x in drm):
             logging.debug("Possível DRM em %s", url)
@@ -184,12 +201,74 @@ async def capture_stream(page, url: str, timeout_ms: int = 25000) -> tuple[str, 
     return chosen, typ, content if 'content' in locals() else ""
 
 
+
+def extract_sitemap_urls(text: str) -> set[str]:
+    out = set()
+    for pair in re.findall(r"(?:<loc>\s*([^<\s]+)\s*</loc>)|(?:^\s*Sitemap:\s*(\S+))", text, re.I | re.M):
+        for value in pair:
+            if value:
+                u = canonical(urljoin(BASE, value))
+                if same_host(u):
+                    out.add(u)
+    return out
+
+
+def sitemap_discovery(session: requests.Session):
+    docs = set(SITEMAP_CANDIDATES)
+    try:
+        r = session.get(ROBOTS_URL, timeout=20)
+        if r.ok:
+            docs |= extract_sitemap_urls(r.text)
+    except Exception as e:
+        logging.debug("robots.txt: %s", e)
+    queue = list(docs); visited = set(); features = set(); collections = set()
+    while queue and len(visited) < 30:
+        u = queue.pop(0)
+        if u in visited: continue
+        visited.add(u)
+        try:
+            r = session.get(u, timeout=25)
+            if not r.ok: continue
+            text = r.text
+            urls = extract_sitemap_urls(text)
+            for x in urls:
+                if x.endswith('.xml') and ('sitemap' in x.lower() or '<sitemapindex' in text.lower()):
+                    if x not in visited: queue.append(x)
+                elif FEATURE_RE.match(urlparse(x).path): features.add(x)
+                elif COLLECTION_RE.match(urlparse(x).path): collections.add(x)
+        except Exception as e:
+            logging.debug("sitemap %s: %s", u, e)
+    return features, collections
+
+
+async def rendered_discovery(page, urls):
+    features=set(); collections=set()
+    for u in urls:
+        try:
+            await page.goto(u, wait_until="domcontentloaded", timeout=30000)
+            await page.wait_for_timeout(2200)
+            hrefs = await page.locator('a[href]').evaluate_all('els => els.map(e => e.href).filter(Boolean)')
+            for href in hrefs:
+                c=canonical(href)
+                if same_host(c):
+                    if FEATURE_RE.match(urlparse(c).path): features.add(c)
+                    elif COLLECTION_RE.match(urlparse(c).path): collections.add(c)
+        except Exception as e:
+            logging.debug("DOM discovery %s: %s", u, e)
+    return features, collections
+
+
 async def scrape(start=START_URL, max_pages=150, max_items=500, concurrency=3):
     session = requests.Session(); session.headers.update(HEADERS)
-    queue = [canonical(start)]
-    seen_pages = set()
     item_urls: set[str] = set()
+    collection_urls: set[str] = set()
 
+    sf, sc = sitemap_discovery(session)
+    item_urls |= sf; collection_urls |= sc
+    logging.info("Sitemap: %d VOD | %d coleções", len(sf), len(sc))
+
+    queue = [canonical(start)] + sorted(collection_urls)
+    seen_pages = set()
     while queue and len(seen_pages) < max_pages:
         batch = []
         while queue and len(batch) < 10:
@@ -203,15 +282,25 @@ async def scrape(start=START_URL, max_pages=150, max_items=500, concurrency=3):
                     links = extract_links(r.text, u)
                     item_urls.update(x for x in links if FEATURE_RE.match(urlparse(x).path))
                     for x in links:
-                        if COLLECTION_RE.match(urlparse(x).path) and x not in seen_pages and x not in queue:
-                            queue.append(x)
+                        if COLLECTION_RE.match(urlparse(x).path):
+                            collection_urls.add(x)
+                            if x not in seen_pages and x not in queue:
+                                queue.append(x)
             except Exception as e:
                 logging.debug("HTTP %s: %s", u, e)
         if len(item_urls) >= max_items: break
 
     items: list[Item] = []
     async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=True, args=["--disable-dev-shm-usage", "--no-sandbox"])
+        browser = await pw.chromium.launch(headless=True, args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"])
+        dctx = await browser.new_context(locale="pt-BR", user_agent=HEADERS["User-Agent"])
+        dpage = await dctx.new_page()
+        rf, rc = await rendered_discovery(dpage, [start] + sorted(collection_urls)[:max_pages])
+        item_urls |= rf; collection_urls |= rc
+        if rc:
+            more = sorted(rc - set(collection_urls))
+        logging.info("Descoberta total: %d páginas VOD | %d coleções", len(item_urls), len(collection_urls))
+        await dctx.close()
         sem = asyncio.Semaphore(concurrency)
 
         async def one(u):

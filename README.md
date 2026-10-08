@@ -1,57 +1,37 @@
 # runtime-vod-m3u
 
-Gerador de playlist M3U para SS IPTV a partir do catálogo VOD público da Runtime.
+Projeto para gerar uma playlist M3U de conteúdos VOD públicos disponibilizados pela Runtime, para uso no SS IPTV.
 
-## O que faz
+## O que esta versão faz
 
-- Descobre páginas de conteúdo em português no catálogo Runtime.
-- Extrai título, gêneros, descrição, imagem e URL da página.
-- Abre as páginas com Chromium/Playwright e captura URLs públicas de reprodução HLS (`.m3u8`) e DASH (`.mpd`) observadas na rede.
-- Ignora DRM/EME e não tenta contornar autenticação ou proteções.
-- Testa os manifestos encontrados antes de colocá-los na playlist.
-- Mantém um catálogo incremental em `catalogo.json`.
-- Mantém somente itens que continuam ativos; novos itens são acrescentados.
-- Gera `runtime_vod.m3u`, otimizada para SS IPTV, com o título real do conteúdo.
-- Executa automaticamente a cada 6 horas pelo GitHub Actions.
+- Descobre páginas VOD por sitemap/robots.txt.
+- Descobre páginas adicionais pelo HTML e pelo DOM renderizado com Chromium.
+- Percorre coleções da Runtime.
+- Abre cada página VOD com Playwright.
+- Captura manifests HLS `.m3u8` ou DASH `.mpd` observando a rede e recursos do player.
+- Extrai o título real do conteúdo, gênero e imagem.
+- Gera `runtime_vod.m3u` otimizada para SS IPTV.
+- Atualiza automaticamente a cada 6 horas.
+- Mantém itens antigos somente quando o manifesto anterior ainda responde como playlist válida.
+- Se a Runtime bloquear/alterar a descoberta e nenhum conteúdo for encontrado, a playlist anterior não é apagada.
+- Usa `ubuntu-24.04` para evitar o aviso de migração do `ubuntu-latest`.
 
-## Arquivos
+## Instalação
 
-- `gerar_m3u.py`: entrada principal.
-- `runtime_scraper.py`: descoberta do catálogo, páginas e streams.
-- `catalogo.json`: estado incremental; é atualizado pelo workflow.
-- `runtime_vod.m3u`: playlist final.
-- `requirements.txt`: dependências Python.
-- `.github/workflows/atualizar.yml`: atualização automática.
+Envie todos os arquivos para a raiz do repositório GitHub, mantendo `.github/workflows/atualizar.yml`.
 
-## Execução local
+Depois execute manualmente:
 
 ```bash
-pip install -r requirements.txt
-python -m playwright install chromium
-python gerar_m3u.py --verbose
+python gerar_m3u.py --max-pages 250 --max-items 600 --concurrency 3 --verbose
 ```
 
-Para uma varredura rápida durante testes:
+O resultado será `runtime_vod.m3u`.
 
-```bash
-python gerar_m3u.py --max-pages 50 --max-items 20 --verbose
-```
+## Atualização
 
-## GitHub
+O GitHub Actions executa a cada 6 horas e também possui `workflow_dispatch` para execução manual.
 
-1. Crie um repositório chamado `runtime-vod-m3u`.
-2. Envie todos os arquivos para a raiz do repositório.
-3. Execute manualmente `Actions > Atualizar Runtime VOD > Run workflow` na primeira vez.
-4. Depois disso o workflow roda a cada 6 horas.
+## Observação
 
-A playlist publicada no repositório será:
-
-`https://raw.githubusercontent.com/SEU_USUARIO/runtime-vod-m3u/main/runtime_vod.m3u`
-
-Use essa URL no SS IPTV.
-
-## Observações
-
-A Runtime pode alterar seu player, CDN, catálogo e mecanismos de reprodução. O projeto evita depender de links HLS antigos: em cada execução ele tenta descobrir novamente os manifests observados pelo navegador.
-
-Links com DRM/EME não são incluídos. Se uma página não expuser um manifesto público reproduzível, ela permanece no catálogo como não reproduzível e não é adicionada à M3U.
+A playlist utiliza somente URLs de reprodução públicas que o player/site disponibilizar ao navegador. Não há tentativa de contornar DRM, autenticação ou proteção de conteúdo.

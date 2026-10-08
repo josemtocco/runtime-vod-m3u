@@ -82,7 +82,10 @@ def main():
     old = load_state()
     logging.info("Catálogo anterior: %d itens", len(old))
     items = asyncio.run(scrape(max_pages=args.max_pages, max_items=args.max_items, concurrency=args.concurrency))
-    logging.info("Itens descobertos: %d | com stream: %d", len(items), sum(bool(x.stream_url) for x in items))
+    logging.info("Itens processados: %d | com stream: %d", len(items), sum(bool(x.stream_url) for x in items))
+    if not items and old:
+        logging.error("Nenhum conteúdo descoberto. Preservando M3U anterior.")
+        return 2
     catalog = merge(items, old)
     STATE.write_text(json.dumps(catalog, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     n = write_m3u(catalog)
