@@ -1,41 +1,36 @@
-# Runtime VOD — Brasil (busca profunda)
+# Runtime VOD Brasil — v6
 
-Projeto para gerar uma playlist M3U leve para SS IPTV usando somente conteúdo público do catálogo brasileiro da Runtime (`/pt-br/`).
+Projeto para gerar uma M3U leve para SS IPTV usando somente conteúdo público do catálogo brasileiro da Runtime.
 
-## O que esta versão corrige
+## O que foi corrigido
 
-A versão anterior encontrou somente uma fração do catálogo. Esta versão não depende de uma lista fixa de categorias. Ela combina várias camadas de descoberta:
+- Descoberta profunda do catálogo `/pt-br`.
+- Descoberta por página inicial, coleções, sitemap/robots e respostas públicas JSON/API.
+- Paginação real e links de próxima página, além de infinite scroll/load more.
+- As categorias são complemento; não são o único mecanismo de descoberta.
+- URLs de filmes são normalizadas para `/pt-br/feature/...`.
+- O scraper não exige que todo manifesto HLS declare `LANGUAGE=pt`; se não houver indicação explícita de inglês, o stream obtido do player brasileiro pode ser aceito.
+- Streams explicitamente identificados como inglês são rejeitados.
+- Processamento usa um pequeno pool de páginas, em vez de criar um navegador/contexto novo para cada filme.
+- Limites de 1.200 filmes e 30 minutos no GitHub Actions para evitar execuções intermináveis.
+- Proteção contra M3U vazia ou queda anormal: uma execução que encontre zero streams, ou muito menos que a anterior, preserva a M3U válida existente.
+- TinyURL é reutilizado quando o stream não mudou.
+- Atualização automática a cada 6 horas.
 
-1. página inicial e menu brasileiro;
-2. rolagem/infinite scroll e botões de carregar mais;
-3. todas as coleções encontradas no site;
-4. exploração recursiva da navegação pública;
-5. sitemap.xml / sitemap index / robots.txt quando disponíveis;
-6. respostas JSON/API/GraphQL públicas observadas pelo navegador;
-7. URLs de filmes encontradas dentro de HTML, JavaScript e JSON;
-8. categorias conhecidas apenas como complemento, sempre em `/pt-br/`;
-9. abertura individual de cada página de filme para descobrir o stream;
-10. tentativa de seleção de áudio Português/Português (Brasil);
-11. validação do HLS para não aceitar deliberadamente uma faixa identificada como inglês.
+## Execução local
 
-A busca profunda é complementar: nenhuma fonte de descoberta substitui as outras.
+```bash
+pip install -r requirements.txt
+python -m playwright install chromium
+python gerar_m3u.py --max-categories 120 --max-items 1200 --concurrency 6 --verbose
+```
 
-## Atualização
+## GitHub Actions
 
-O GitHub Actions executa automaticamente a cada 6 horas e também permite execução manual.
+O workflow `Atualizar Runtime VOD Brasil` roda a cada 6 horas e também pode ser iniciado manualmente.
 
-## Incremental
+A M3U só é substituída quando existe uma quantidade válida de streams. Uma falha do site/player não deve apagar uma lista anterior que esteja funcionando.
 
-`catalogo.json` mantém os registros já conhecidos. A cada execução são adicionados novos títulos e atualizados os encontrados novamente. A M3U contém somente itens ativos com stream válido. Se uma execução não encontrar nenhum item, o projeto preserva a M3U anterior para evitar apagar a playlist por uma falha temporária.
+## Observação sobre áudio
 
-## SS IPTV
-
-A playlist usa `#EXTINF`, `tvg-name`, `tvg-logo` e `group-title`. Os links podem ser encurtados com TinyURL (`SHORTEN_URLS=true`). O encurtamento é somente um redirecionamento: não transforma um stream temporário em permanente.
-
-## Limites
-
-A execução padrão permite até 300 coleções e 10.000 páginas VOD descobertas. O objetivo é alcançar o catálogo completo disponível publicamente, sem depender de uma contagem artificial de filmes.
-
-## Importante
-
-O projeto acessa somente páginas e streams públicos disponibilizados pelo site. Não tenta contornar DRM, autenticação, assinatura ou outros controles de acesso.
+A página brasileira do Runtime confirma que os títulos existem no catálogo `/pt-br`. A versão também verifica informações de áudio expostas pelo player/manifesto quando disponíveis. Não é feita tentativa de contornar DRM, login ou qualquer controle de acesso.
