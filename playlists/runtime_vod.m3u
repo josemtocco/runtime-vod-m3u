@@ -1,91 +1,41 @@
 #EXTM3U
-#EXTINF:-1 tvg-name="A Informante" group-title="Filmes • Acao" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_whistleblower_thumbnail_16x9_widescreen_bpor.jpg",A Informante
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_gygn1yvu/flavorIds/1_du00ts7f,1_u9icpujw,1_mdawhz23/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Aliança Mortal" group-title="Filmes • Acao" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/enemies_closer_thumbnail_16x9_widescreen_br_1.jpg",Aliança Mortal
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_csmbe81x/flavorIds/1_hkwa2rua,1_8bk07k8g,1_2uhud2n3/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Caçador de Mutantes" group-title="Filmes • Acao" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/enhanced_thumbnail_16x9_widescreen_bpor.jpg",Caçador de Mutantes
+#EXTINF:-1 tvg-name="Caçador de Mutantes" group-title="Filmes • Acao" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/enhanced_thumbnail_16x9_widescreen_bpor.jpg",Caçador de Mutantes
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_i3mw4ymd/flavorIds/1_svu4jeze,1_qitmklye,1_5k5fj9x9/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Cidade Sitiada" group-title="Filmes • Acao" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/city_under_siege_thumbnail_16x9_widescreen_bpor.jpg",Cidade Sitiada
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_mucb0lfz/flavorIds/1_59afweqg,1_ax40oicw,1_xmlm4lji/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Cloud Atlas" group-title="Filmes • Acao" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/cloud_atlas_thumbnail_16x9_widescreen_bpor_v2.jpg",Cloud Atlas
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_l207rfy1/flavorIds/1_z9icysi4,1_zadoaier,1_1mrsguod/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Darkland: O Retorno" group-title="Filmes • Acao" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/darkland_the_return_thumbnail_16x9_widescreen_bpor.jpg",Darkland: O Retorno
+#EXTINF:-1 tvg-name="Darkland: O Retorno" group-title="Filmes • Acao" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/darkland_the_return_thumbnail_16x9_widescreen_bpor.jpg",Darkland: O Retorno
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_6fljvw5g/flavorIds/1_3ieh8h26,1_k9c7r121,1_atowkjmy/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Desejo de Vingança" group-title="Filmes • Acao" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/absolute_deception_thumbnail_16x9_widescreen_bpor.jpg",Desejo de Vingança
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_m09ikoax/flavorIds/1_y8vt57kc,1_atknnjk4,1_xvrtou7y/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Inimigo Invisível" group-title="Filmes • Acao" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/recon_thumbnail_16x9_widescreen_bpor.jpg",Inimigo Invisível
+#EXTINF:-1 tvg-name="Inimigo Invisível" group-title="Filmes • Acao" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/recon_thumbnail_16x9_widescreen_bpor.jpg",Inimigo Invisível
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_wnzmwqve/flavorIds/1_jrosoj5w,1_tsx3sz03,1_kgh7e2y3/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="O Alvo: Bem-vindo ao Inferno" group-title="Filmes • Acao" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_devils_tomb_thumbnail_16x9_widescreen_bpor.jpg",O Alvo: Bem-vindo ao Inferno
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_5dhpwg48/flavorIds/1_450zoncn,1_wh41zie9,1_efdxltmh/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="O Esconderijo" group-title="Filmes • Acao" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/stash_house_thumbnail_16x9_widescreen_bpor.jpg",O Esconderijo
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_iry4230y/flavorIds/1_omij130n,1_u71aep94,1_mddun02j/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Os Mais Jovens" group-title="Filmes • Acao" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/young_ones_thumbnail_16x9_widescreen_br.jpg",Os Mais Jovens
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_wohpwrhh/flavorIds/1_8l03usw0,1_x5e9yyz9,1_d870ziw6/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Ruslan - Vingança Explosiva" group-title="Filmes • Acao" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/driven_to_kill_thumbnail_16x9_widescreen_bpor.jpg",Ruslan - Vingança Explosiva
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_5r7chd0e/flavorIds/1_ygzd7lfu,1_5snn476h,1_282voawf/format/applehttp/protocol/https/a.m3u8
 #EXTINF:-1 tvg-name="Sequestro em Miami" group-title="Filmes • Acao" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/miami_heat_thumbnail_16x9_widescreen_bpor.jpg",Sequestro em Miami
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_rdr4t71p/flavorIds/1_cm9ivs1v,1_y5fmvw4b,1_1im8lnbp/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="The Rising Hawk" group-title="Filmes • Acao" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_rising_hawk_thumbnail_16x9_widescreen_las.jpg",The Rising Hawk
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_ewnw8bn7/flavorIds/1_0rrdam0p,1_t30oxkpa,1_5a3a2c6g/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Tiroteio Zumbi" group-title="Filmes • Acao" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/dead_trigger_thumbnail_16x9_widescreen_bpor.jpg",Tiroteio Zumbi
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_h83f3mg3/flavorIds/1_pb7x11rt,1_0e5vdgn1,1_cyfogngk/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="A Jovem Bruxa" group-title="Filmes • Aventura" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/wildwitch_thumbnail_16x9_widescreen_bpor.jpg",A Jovem Bruxa
+#EXTINF:-1 tvg-name="A Jovem Bruxa" group-title="Filmes • Aventura" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/wildwitch_thumbnail_16x9_widescreen_bpor.jpg",A Jovem Bruxa
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_hc1gza3z/flavorIds/1_9zgmfia2,1_fgqti0tu,1_5jp4848s/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Assassinato em Yellowstone" group-title="Filmes • Aventura" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/murder_at_yellowstone_city_thumbnail_16x9_widescreen_bpor.jpg",Assassinato em Yellowstone
+#EXTINF:-1 tvg-name="Assassinato em Yellowstone" group-title="Filmes • Aventura" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/murder_at_yellowstone_city_thumbnail_16x9_widescreen_bpor.jpg",Assassinato em Yellowstone
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_12kxa45p/flavorIds/1_xnniu458,1_f5pvcu25,1_k4spgvme/format/applehttp/protocol/https/a.m3u8
 #EXTINF:-1 tvg-name="O Piloto: Uma Batalha Pela Sobrevivência" group-title="Filmes • Aventura" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_pilot_thumbnail_16x9_widescreen_bpor.jpg",O Piloto: Uma Batalha Pela Sobrevivência
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_jt4w4ahs/flavorIds/1_7097gg8i,1_omc0ufrx,1_i8nbscrn/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="O Silêncio da Montanha" group-title="Filmes • Aventura" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/silent_mountain_thumbnail_16x9_widescreen_bpor.jpg",O Silêncio da Montanha
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_wneq36nu/flavorIds/1_3k01fb4a,1_fajvtqo4,1_brtr41o1/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Perigo no Recife" group-title="Filmes • Aventura" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_reef_stalked_thumbnail_16x9_widescreen_bpor.jpg",Perigo no Recife
+#EXTINF:-1 tvg-name="Perigo no Recife" group-title="Filmes • Aventura" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_reef_stalked_thumbnail_16x9_widescreen_bpor.jpg",Perigo no Recife
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_nghoqhex/flavorIds/1_uptdkz33,1_m0wggd6a,1_29pynzqq/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Salvando o General Yang" group-title="Filmes • Aventura" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/saving_general_yang_thumbnail_16x9_widescreen_bpor.jpg",Salvando o General Yang
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_c65868sz/flavorIds/1_1p6amk9p,1_2lv2onyj,1_2zsso8c3/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Código de Honra" group-title="Filmes • Biography" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/puncture_thumbnail_16x9_widescreen_bpor.jpg",Código de Honra
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_4y55khcf/flavorIds/1_u3rxajzz,1_j7dgxlf7,1_47092t4r/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Desejos da Tarde" group-title="Filmes • Comedia" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/afternoon_delight_thumbnail_16x9_widescreen_bpor.jpg",Desejos da Tarde
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_0eny2ohb/flavorIds/1_odpixhce,1_a3o1ywc7,1_s4gmnics/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Grandes Momentos" group-title="Filmes • Comedia" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/save_the_date_thumbnail_16x9_widescreen_bpor.jpg",Grandes Momentos
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_c2ehiewg/flavorIds/1_722h0kp1,1_fsiyc5yr,1_u43an5i0/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="O Estranho Thomas" group-title="Filmes • Comedia" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/odd_thomas_thumbnail_16x9_widescreen_bpor.jpg",O Estranho Thomas
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_w4inipt1/flavorIds/1_b1yreqkx,1_t5h8olur,1_yc6lvv9g/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="A Geração do Mal" group-title="Filmes • Crime" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/generation_of_evil_thumbnail_16x9_widescreen_bpor.jpg",A Geração do Mal
+#EXTINF:-1 tvg-name="A Geração do Mal" group-title="Filmes • Crime" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/generation_of_evil_thumbnail_16x9_widescreen_bpor.jpg",A Geração do Mal
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_1v8s4i8m/flavorIds/1_b3jzgf7e,1_f9jgikde,1_ujv9vdgs/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Quase Irmãs" group-title="Filmes • Crime" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/go_for_sisters_thumbnail_16x9_widescreen_bpor_v2.jpg",Quase Irmãs
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_6eiv5krp/flavorIds/1_aomq5wl7,1_utseasm1,1_i091ulz9/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Vidas que se Cruzam" group-title="Filmes • Crime" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_burning_plain_thumbnail_16x9_widescreen_bpor.jpg",Vidas que se Cruzam
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_vyzqu8bu/flavorIds/1_xv4wcsh8,1_qztfy319,1_vzom7mg1/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="As Origens do Universo" group-title="Filmes • Documentario" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/origins_of_the_universe_thumbnail_16x9_widescreen_bpor.jpg",As Origens do Universo
+#EXTINF:-1 tvg-name="As Origens do Universo" group-title="Filmes • Documentario" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/origins_of_the_universe_thumbnail_16x9_widescreen_bpor.jpg",As Origens do Universo
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_2d1xpgw9/flavorIds/1_89gh9ocg,1_uqg76v8p,1_xnmwwhje/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="A Infância de Um Líder" group-title="Filmes • Drama" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_childhood_of_a_leader_thumbnail_16x9_widescreen_bpor.jpg",A Infância de Um Líder
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_xp155w9u/flavorIds/1_hfqd9dp1,1_l64m5iic,1_vfq03drp/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Barrabás" group-title="Filmes • Drama" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/barrabas_thumbnail_16x9_widescreen_bpor.jpg",Barrabás
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_kr5vbniv/flavorIds/1_cnr5msx6,1_qiyw717m,1_t46hlrte/format/applehttp/protocol/https/a.m3u8
+#EXTINF:-1 tvg-name="Baracoa" group-title="Filmes • Documentario" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/baracoa_thumbnail_16x9_widescreen_ush.jpg",Baracoa
+https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_gd7i9fu5/flavorIds/1_52kf885v,1_ya0w4c02,1_sy49dzdq,1_btvdv92a/format/applehttp/protocol/https/a.m3u8
 #EXTINF:-1 tvg-name="O Falsificador" group-title="Filmes • Drama" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_forger_thumbnail_16x9_widescreen_bpor.jpg",O Falsificador
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_t2xflu8h/flavorIds/1_xxntfts3/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Parceiros no Amor" group-title="Filmes • Drama" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/sunlight_jr_thumbnail_16x9_widescreen_bpor.jpg",Parceiros no Amor
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_avx4ak1v/flavorIds/1_c3kn7imf,1_6imyjw2k,1_5nddhg1p/format/applehttp/protocol/https/a.m3u8
 #EXTINF:-1 tvg-name="Uma Mulher Contra Hitler" group-title="Filmes • Drama" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/sophie_scholl_thumbnail_16x9_widescreen_bpor.jpg",Uma Mulher Contra Hitler
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_grh05gw1/flavorIds/1_ancxnmwd,1_da3oejzb,1_qmmhzkfl/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Um Dia de Cada Vez" group-title="Filmes • Familia" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/no_letting_go_thumbnail_16x9_widescreen_bpor.jpg",Um Dia de Cada Vez
+#EXTINF:-1 tvg-name="Um Dia de Cada Vez" group-title="Filmes • Familia" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/no_letting_go_thumbnail_16x9_widescreen_bpor.jpg",Um Dia de Cada Vez
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_q5blrv77/flavorIds/1_k6kh6oag,1_odl4zwfv,1_cumnhp47/format/applehttp/protocol/https/a.m3u8
 #EXTINF:-1 tvg-name="A Garota dos Seus Sonhos" group-title="Filmes • Romance" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/met_a_girl_thumbnail_16x9_widescreen_bpor.jpg",A Garota dos Seus Sonhos
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_l5cgcsxg/flavorIds/1_qijgwerw,1_k1uhy0rs,1_7qc4tvwv/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="A Aranha Negra" group-title="Filmes • Suspense" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_black_spider_thumbnail_16x9_widescreen_bpor.jpg",A Aranha Negra
+#EXTINF:-1 tvg-name="A Aranha Negra" group-title="Filmes • Suspense" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/the_black_spider_thumbnail_16x9_widescreen_bpor.jpg",A Aranha Negra
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_9y4pr2z6/flavorIds/1_esj4ny4f,1_y0dn8ymf,1_r2nbbstf/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Pessoa Sombria" group-title="Filmes • Suspense" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/shadow_people_thumbnail_16x9_widescreen_bpor.jpg",Pessoa Sombria
+#EXTINF:-1 tvg-name="Pessoa Sombria" group-title="Filmes • Suspense" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/shadow_people_thumbnail_16x9_widescreen_bpor.jpg",Pessoa Sombria
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_eir3qe1d/flavorIds/1_4b9c79k9,1_w0te5i30,1_efiidvdv/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Refém do Espírito" group-title="Filmes • Suspense" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/100_feet_thumbnail_16x9_widescreen_bpor.jpg",Refém do Espírito
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_emzk6lac/flavorIds/1_w4pqf3fy,1_lny4ajb6,1_tssgqhko/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Visões" group-title="Filmes • Suspense" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/visions_thumbnail_16x9_widescreen_bpor.jpg",Visões
+#EXTINF:-1 tvg-name="Visões" group-title="Filmes • Suspense" tvg-logo="https://img1.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/visions_thumbnail_16x9_widescreen_bpor.jpg",Visões
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_5icjsj6r/flavorIds/1_i6bb2df7,1_cmdy1buy,1_zfm9hman/format/applehttp/protocol/https/a.m3u8
 #EXTINF:-1 tvg-name="Baile de Formatura" group-title="Filmes • Terror" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/prom_ride_thumbnail_16x9_widescreen_bpor.jpg",Baile de Formatura
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_2iiruwxr/flavorIds/1_ml7hti2z,1_hfowm1xc,1_yl92o2g8/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Jogo Macabro" group-title="Filmes • Terror" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/open_graves_thumbnail_16x9_widescreen_bpor.jpg",Jogo Macabro
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_bj2kdsm9/flavorIds/1_uqfxmqlf,1_t44vonmu,1_0w93f93q/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="O Trevo Vermelho" group-title="Filmes • Terror" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/red_clover_thumbnail_16x9_widescreen_bpor.jpg",O Trevo Vermelho
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_u8fc6kuu/flavorIds/1_lhq8pc7x,1_dgywopcg,1_iflsibdm/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Os Assassinatos na Cabana de Utah" group-title="Filmes • Terror" tvg-logo="https://img2.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/utah_cabin_murders_thumbnail_16x9_widescreen_bpor.jpg",Os Assassinatos na Cabana de Utah
+#EXTINF:-1 tvg-name="Os Assassinatos na Cabana de Utah" group-title="Filmes • Terror" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/utah_cabin_murders_thumbnail_16x9_widescreen_bpor.jpg",Os Assassinatos na Cabana de Utah
 https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_3fcvaj4r/flavorIds/1_0nbgwjal,1_19kmvjl1,1_wgbcqggw/format/applehttp/protocol/https/a.m3u8
-#EXTINF:-1 tvg-name="Semente do Mal" group-title="Filmes • Terror" tvg-logo="https://img3.static-ottera.com/prod/run/video/thumbnails/widescreen/366x206/fertile_ground_thumbnail_16x9_widescreen_bpor.jpg",Semente do Mal
-https://cfvod.kaltura.com/p/513551/sp/51355100/playManifest/entryId/1_zgn5uqht/flavorIds/1_e49t1x5e,1_i80rcubf,1_aa7hr8so/format/applehttp/protocol/https/a.m3u8
